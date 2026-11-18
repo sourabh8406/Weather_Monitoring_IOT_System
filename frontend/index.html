@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <script src="assets/js/config.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WeatherIQ — Smart Weather Monitoring System</title>
+  <meta name="description" content="Monitor environmental conditions in real time with intelligent IoT technology powered by ESP32, FastAPI and Chart.js." />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy:  { DEFAULT: '#0f172a', light: '#1e293b', card: '#263348' },
+            green: { DEFAULT: '#10b981', dark: '#059669', darker: '#047857' },
+            blue:  { DEFAULT: '#3b82f6', dark: '#2563eb' },
+            slate: { 400: '#94a3b8', 500: '#64748b', 600: '#475569', 700: '#334155' },
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          animation: {
+            'float': 'float 3s ease-in-out infinite',
+            'pulse-soft': 'pulse-soft 2s ease-in-out infinite',
+          },
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <!-- Global CSS -->
+  <link rel="stylesheet" href="assets/css/style.css" />
+
+  <style>
+    /* Extra page-specific tweaks */
+    .hero-gradient {
+      background:
+        radial-gradient(ellipse 90% 70% at 50% -10%, rgba(16,185,129,0.14) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 85% 55%,  rgba(59,130,246,0.10) 0%, transparent 55%),
+        #0f172a;
+    }
+    .stat-card-glow { box-shadow: 0 0 40px rgba(16,185,129,0.15); }
+    .nav-link { position: relative; }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: -4px; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #10b981, #3b82f6);
+      border-radius: 1px;
+      transform: scaleX(0);
+      transition: transform 0.25s ease;
+    }
+    .nav-link:hover::after, .nav-link.active::after { transform: scaleX(1); }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    @keyframes ticker {
+      0%,80%,100%{opacity:1;transform:translateY(0)}
+      40%{opacity:0;transform:translateY(-8px)}
+    }
+    .ticker { animation: ticker 4s ease-in-out infinite; }
+    .step-line {
+      flex: 1; height: 2px;
+      background: linear-gradient(90deg, #10b981, #3b82f6);
+      opacity: 0.35; margin: 0 6px; align-self: center;
+    }
+  </style>
+</head>
+
+<body class="bg-[#0f172a] text-slate-100 font-sans">
+
+<!-- ═══════════════════════════ NAVBAR ═══════════════════════════ -->
+<nav class="navbar fixed top-0 left-0 right-0 z-50 border-b border-slate-700/60 bg-[#0f172a]/85 backdrop-blur-xl">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16">
+
+      <!-- Logo -->
+      <a href="index.html" class="flex items-center gap-2 group">
+        <span class="text-2xl">🌤️</span>
+        <span class="text-xl font-bold tracking-tight">
+          <span class="text-white">Weather</span><span class="text-green-400">IQ</span>
+        </span>
+      </a>
+
+      <!-- Desktop nav -->
+      <div class="hidden md:flex items-center gap-7">
+        <a href="#features"    class="nav-link text-slate-400 hover:text-white text-sm font-medium transition-colors">Features</a>
+        <a href="#how-it-works" class="nav-link text-slate-400 hover:text-white text-sm font-medium transition-colors">How It Works</a>
+        <a href="dashboard/overview.html" class="nav-link text-slate-400 hover:text-white text-sm font-medium transition-colors">Dashboard</a>
+        <a href="login.html" class="btn btn-primary text-sm px-5 py-2">Login</a>
+      </div>
+
+      <!-- Hamburger -->
+      <button id="hamburger" class="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition" aria-label="Toggle menu">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <!-- Mobile menu -->
+    <div id="mobile-menu" class="mobile-menu pb-3 md:hidden">
+      <a href="#features"     class="block px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg text-sm transition">Features</a>
+      <a href="#how-it-works" class="block px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg text-sm transition">How It Works</a>
+      <a href="dashboard/overview.html" class="block px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg text-sm transition">Dashboard</a>
+      <a href="login.html"    class="block px-3 py-2 mt-1 text-center text-sm font-semibold text-white bg-green-500 hover:bg-green-600 rounded-lg transition">Login</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════ HERO ═══════════════════════════ -->
+<section class="hero-gradient min-h-screen flex flex-col justify-center pt-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
+    <div class="grid lg:grid-cols-2 gap-14 items-center">
+
+      <!-- Left text -->
+      <div class="animate-slide-up">
+        <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/25 text-green-400 text-xs font-semibold uppercase tracking-widest mb-6">
+          <span class="status-dot status-online animate-pulse-green"></span> Live Monitoring Active
+        </span>
+
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight tracking-tight mb-6">
+          Smart <span class="text-gradient">Weather Monitoring</span> System
+        </h1>
+
+        <p class="text-slate-400 text-lg sm:text-xl leading-relaxed mb-10 max-w-xl">
+          Monitor environmental conditions in real time with intelligent IoT technology. 
+          Powered by ESP32 sensors, FastAPI and an interactive analytics dashboard.
+        </p>
+
+        <div class="flex flex-wrap gap-4">
+          <a href="dashboard/overview.html" class="btn btn-primary text-base px-7 py-3">
+            <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+            Explore Dashboard
+          </a>
+          <a href="#features" class="btn btn-secondary text-base px-7 py-3">
+            <i data-lucide="arrow-down" class="w-5 h-5"></i>
+            Learn More
+          </a>
+        </div>
+
+        <!-- Quick stats row -->
+        <div class="flex flex-wrap gap-6 mt-12 pt-10 border-t border-slate-700/50">
+          <div>
+            <p class="text-2xl font-bold text-green-400" id="stat-devices">—</p>
+            <p class="text-xs text-slate-500 mt-0.5">Connected Sensors</p>
+          </div>
+          <div class="w-px bg-slate-700"></div>
+          <div>
+            <p class="text-2xl font-bold text-blue-400">24/7</p>
+            <p class="text-xs text-slate-500 mt-0.5">Uptime Monitoring</p>
+          </div>
+          <div class="w-px bg-slate-700"></div>
+          <div>
+            <p class="text-2xl font-bold text-white" id="stat-readings">—</p>
+            <p class="text-xs text-slate-500 mt-0.5">Readings Logged</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: live stat cards -->
+      <div class="animate-slide-up delay-200 grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+        <!-- Temperature -->
+        <div class="card stat-card-glow p-5 flex flex-col gap-3 col-span-2 sm:col-span-1">
+          <div class="flex items-center justify-between">
+            <div class="icon-wrap bg-orange-500/15">
+              <i data-lucide="thermometer" class="w-5 h-5 text-orange-400"></i>
+            </div>
+            <span class="badge badge-green text-xs">LIVE</span>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Temperature</p>
+            <p class="text-3xl font-bold text-white"><span id="live-temp" class="ticker">—</span>°C</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs text-slate-500">
+            <i data-lucide="trending-up" class="w-3 h-3 text-orange-400"></i>
+            ESP32 • DHT22 Sensor
+          </div>
+        </div>
+
+        <!-- Humidity -->
+        <div class="card p-5 flex flex-col gap-3">
+          <div class="icon-wrap bg-blue-500/15">
+            <i data-lucide="droplets" class="w-5 h-5 text-blue-400"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Humidity</p>
+            <p class="text-3xl font-bold text-white"><span id="live-hum" class="ticker">—</span>%</p>
+          </div>
+          <div class="text-xs text-slate-500">DHT22 • Normal Range</div>
+        </div>
+
+        <!-- Pressure -->
+        <div class="card p-5 flex flex-col gap-3">
+          <div class="icon-wrap bg-purple-500/15">
+            <i data-lucide="gauge" class="w-5 h-5 text-purple-400"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Pressure</p>
+            <p class="text-3xl font-bold text-white"><span id="live-pres" class="ticker">—</span><span class="text-base font-normal text-slate-500 ml-1">hPa</span></p>
+          </div>
+          <div class="text-xs text-slate-500">BMP280 • Sea Level</div>
+        </div>
+
+        <!-- Air Quality -->
+        <div class="card p-5 flex flex-col gap-3 col-span-2 sm:col-span-1">
+          <div class="flex items-center justify-between">
+            <div class="icon-wrap bg-green-500/15">
+              <i data-lucide="wind" class="w-5 h-5 text-green-400"></i>
+            </div>
+            <span class="badge badge-green">Good</span>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Air Quality (AQI)</p>
+            <p class="text-3xl font-bold text-white"><span id="live-aqi" class="ticker">—</span><span class="text-base font-normal text-slate-500 ml-1">/ 4095</span></p>
+          </div>
+          <div class="text-xs text-slate-500">MQ-135 • CO₂ &amp; VOC</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scroll cue -->
+  <div class="flex justify-center pb-8 animate-bounce text-slate-600">
+    <i data-lucide="chevrons-down" class="w-6 h-6"></i>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ FEATURES ═══════════════════════════ -->
+<section id="features" class="py-24 bg-[#1e293b]/40">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-16">
+      <span class="badge badge-blue mb-4">Core Features</span>
+      <h2 class="section-title mb-4">Everything You Need to <span class="text-gradient">Monitor the Environment</span></h2>
+      <p class="section-subtitle text-slate-400">WeatherIQ combines hardware-grade precision with a polished web dashboard for complete environmental intelligence.</p>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      <!-- Feature 1 -->
+      <div class="card p-6 group hover:border-green-500/40">
+        <div class="icon-wrap bg-green-500/15 mb-4 group-hover:scale-110 transition-transform">
+          <i data-lucide="activity" class="w-5 h-5 text-green-400"></i>
+        </div>
+        <h3 class="font-semibold text-white mb-2">Real-Time Monitoring</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Live sensor data streamed every 5 seconds via ESP32 to the backend API, displayed instantly on interactive charts.</p>
+      </div>
+
+      <!-- Feature 2 -->
+      <div class="card p-6 group hover:border-blue-500/40">
+        <div class="icon-wrap bg-blue-500/15 mb-4 group-hover:scale-110 transition-transform">
+          <i data-lucide="thermometer-sun" class="w-5 h-5 text-blue-400"></i>
+        </div>
+        <h3 class="font-semibold text-white mb-2">Temperature &amp; Humidity</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">High-precision DHT22 sensor tracks temperature (−40 to +80 °C) and relative humidity (0–100%) with ±0.5 °C accuracy.</p>
+      </div>
+
+      <!-- Feature 3 -->
+      <div class="card p-6 group hover:border-purple-500/40">
+        <div class="icon-wrap bg-purple-500/15 mb-4 group-hover:scale-110 transition-transform">
+          <i data-lucide="gauge" class="w-5 h-5 text-purple-400"></i>
+        </div>
+        <h3 class="font-semibold text-white mb-2">Pressure Tracking</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">BMP280 barometric sensor measures atmospheric pressure (300–1100 hPa), useful for weather forecasting and altitude estimation.</p>
+      </div>
+
+      <!-- Feature 4 -->
+      <div class="card p-6 group hover:border-cyan-500/40">
+        <div class="icon-wrap bg-cyan-500/15 mb-4 group-hover:scale-110 transition-transform">
+          <i data-lucide="cloud-rain" class="w-5 h-5 text-cyan-400"></i>
+        </div>
+        <h3 class="font-semibold text-white mb-2">Rain Detection</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Capacitive rain sensor instantly detects precipitation events and logs them in the database with timestamps for trend analysis.</p>
+      </div>
+
+      <!-- Feature 5 -->
+      <div class="card p-6 group hover:border-teal-500/40">
+        <div class="icon-wrap bg-teal-500/15 mb-4 group-hover:scale-110 transition-transform">
+          <i data-lucide="wind" class="w-5 h-5 text-teal-400"></i>
+        </div>
+        <h3 class="font-semibold text-white mb-2">Air Quality Index</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">MQ-135 sensor detects CO₂, ammonia, benzene and other VOCs, providing a composite air-quality index (0–4095 raw ADC).</p>
+      </div>
+
+      <!-- Feature 6 -->
+      <div class="card p-6 group hover:border-red-500/40">
+        <div class="icon-wrap bg-red-500/15 mb-4 group-hover:scale-110 transition-transform">
+          <i data-lucide="bell-ring" class="w-5 h-5 text-red-400"></i>
+        </div>
+        <h3 class="font-semibold text-white mb-2">Automated Alerts</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Configurable threshold alerts fire automatically when temperature, humidity or air quality exceed safe operating limits.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ HOW IT WORKS ═══════════════════════════ -->
+<section id="how-it-works" class="py-24 bg-[#0f172a]">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-16">
+      <span class="badge badge-green mb-4">Architecture</span>
+      <h2 class="section-title mb-4">How <span class="text-gradient">WeatherIQ</span> Works</h2>
+      <p class="section-subtitle text-slate-400">A simple four-stage pipeline from physical sensors all the way to your browser.</p>
+    </div>
+
+    <!-- Desktop step flow -->
+    <div class="hidden md:flex items-stretch gap-0 mb-12">
+
+      <!-- Step 1 -->
+      <div class="flex-1 card p-6 text-center group hover:border-green-500/40">
+        <div class="w-10 h-10 rounded-full bg-green-500/20 text-green-400 font-bold text-lg flex items-center justify-center mx-auto mb-4">1</div>
+        <div class="icon-wrap bg-green-500/10 mx-auto mb-4">
+          <i data-lucide="cpu" class="w-6 h-6 text-green-400"></i>
+        </div>
+        <h3 class="font-semibold text-white mb-2">Sensors</h3>
+        <p class="text-slate-400 text-sm">DHT22, BMP280, Rain and MQ-135 collect raw environmental data every 5 s.</p>
+      </div>
+
+      <div class="step-line self-center flex-none w-8"></div>
+
+      <!-- Step 2 -->
+      <div class="flex-1 card p-6 text-center group hover:border-blue-500/40">
+        <div class="w-10 h-10 rounded-full bg-blue-500/20 text-blue-400 font-bold text-lg flex items-center justify-center mx-auto mb-4">2</div>
+        <div class="icon-wrap bg-blue-500/10 mx-auto mb-4">
+          <i data-lucide="wifi" class="w-6 h-6 text-blue-400"></i>
+        </div>
+        <h3 class="font-semibold text-white mb-2">ESP32</h3>
+        <p class="text-slate-400 text-sm">ESP32 microcontroller reads all sensors and POSTs JSON readings to the backend over Wi-Fi.</p>
+      </div>
+
+      <div class="step-line self-center flex-none w-8"></div>
+
+      <!-- Step 3 -->
+      <div class="flex-1 card p-6 text-center group hover:border-purple-500/40">
+        <div class="w-10 h-10 rounded-full bg-purple-500/20 text-purple-400 font-bold text-lg flex items-center justify-center mx-auto mb-4">3</div>
+        <div class="icon-wrap bg-purple-500/10 mx-auto mb-4">
+          <i data-lucide="server" class="w-6 h-6 text-purple-400"></i>
+        </div>
+        <h3 class="font-semibold text-white mb-2">Backend API</h3>
+        <p class="text-slate-400 text-sm">FastAPI validates, persists to MySQL and runs alert-threshold checks in real time.</p>
+      </div>
+
+      <div class="step-line self-center flex-none w-8"></div>
+
+      <!-- Step 4 -->
+      <div class="flex-1 card p-6 text-center group hover:border-orange-500/40">
+        <div class="w-10 h-10 rounded-full bg-orange-500/20 text-orange-400 font-bold text-lg flex items-center justify-center mx-auto mb-4">4</div>
+        <div class="icon-wrap bg-orange-500/10 mx-auto mb-4">
+          <i data-lucide="monitor" class="w-6 h-6 text-orange-400"></i>
+        </div>
+        <h3 class="font-semibold text-white mb-2">Dashboard</h3>
+        <p class="text-slate-400 text-sm">Chart.js-powered dashboard fetches the API and renders live graphs, alerts and device status.</p>
+      </div>
+    </div>
+
+    <!-- Mobile step flow (vertical) -->
+    <div class="md:hidden flex flex-col gap-4">
+      <div class="card p-5 flex items-start gap-4">
+        <div class="w-9 h-9 flex-shrink-0 rounded-full bg-green-500/20 text-green-400 font-bold flex items-center justify-center">1</div>
+        <div>
+          <h3 class="font-semibold text-white mb-1">Sensors</h3>
+          <p class="text-slate-400 text-sm">DHT22, BMP280, Rain and MQ-135 collect environmental data.</p>
+        </div>
+      </div>
+      <div class="card p-5 flex items-start gap-4">
+        <div class="w-9 h-9 flex-shrink-0 rounded-full bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center">2</div>
+        <div>
+          <h3 class="font-semibold text-white mb-1">ESP32</h3>
+          <p class="text-slate-400 text-sm">Microcontroller reads and POSTs JSON readings over Wi-Fi.</p>
+        </div>
+      </div>
+      <div class="card p-5 flex items-start gap-4">
+        <div class="w-9 h-9 flex-shrink-0 rounded-full bg-purple-500/20 text-purple-400 font-bold flex items-center justify-center">3</div>
+        <div>
+          <h3 class="font-semibold text-white mb-1">Backend API</h3>
+          <p class="text-slate-400 text-sm">FastAPI validates data, stores to MySQL and triggers alerts.</p>
+        </div>
+      </div>
+      <div class="card p-5 flex items-start gap-4">
+        <div class="w-9 h-9 flex-shrink-0 rounded-full bg-orange-500/20 text-orange-400 font-bold flex items-center justify-center">4</div>
+        <div>
+          <h3 class="font-semibold text-white mb-1">Dashboard</h3>
+          <p class="text-slate-400 text-sm">Chart.js dashboard renders live graphs and device status.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ SENSORS ═══════════════════════════ -->
+<section id="sensors" class="py-24 bg-[#1e293b]/40">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-16">
+      <span class="badge badge-blue mb-4">Hardware</span>
+      <h2 class="section-title mb-4">IoT <span class="text-gradient">Sensor Suite</span></h2>
+      <p class="section-subtitle text-slate-400">Industrial-grade sensors chosen for accuracy, reliability and ESP32 compatibility.</p>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+      <!-- DHT22 -->
+      <div class="card p-6 hover:border-blue-500/40">
+        <div class="icon-wrap bg-blue-500/15 mb-4">
+          <i data-lucide="thermometer-sun" class="w-5 h-5 text-blue-400"></i>
+        </div>
+        <h3 class="font-semibold text-white mb-1">DHT22</h3>
+        <p class="text-xs text-slate-500 mb-4">Temperature &amp; Humidity</p>
+        <div>
+          <div class="spec-row"><span class="spec-label">Temp Range</span><span class="spec-value">−40 to +80°C</span></div>
+          <div class="spec-row"><span class="spec-label">Accuracy</span><span class="spec-value">±0.5°C</span></div>
+          <div class="spec-row"><span class="spec-label">Humidity</span><span class="spec-value">0–100% RH</span></div>
+          <div class="spec-row"><span class="spec-label">Interface</span><span class="spec-value">1-Wire</span></div>
+          <div class="spec-row"><span class="spec-label">Voltage</span><span class="spec-value">3.3–5.5 V</span></div>
+        </div>
+      </div>
+
+      <!-- BMP280 -->
+      <div class="card p-6 hover:border-purple-500/40">
+        <div class="icon-wrap bg-purple-500/15 mb-4">
+          <i data-lucide="gauge" class="w-5 h-5 text-purple-400"></i>
+        </div>
+        <h3 class="font-semibold text-white mb-1">BMP280</h3>
+        <p class="text-xs text-slate-500 mb-4">Barometric Pressure</p>
+        <div>
+          <div class="spec-row"><span class="spec-label">Pressure</span><span class="spec-value">300–1100 hPa</span></div>
+          <div class="spec-row"><span class="spec-label">Resolution</span><span class="spec-value">0.0016 hPa</span></div>
+          <div class="spec-row"><span class="spec-label">Accuracy</span><span class="spec-value">±1 hPa</span></div>
+          <div class="spec-row"><span class="spec-label">Interface</span><span class="spec-value">I²C / SPI</span></div>
+          <div class="spec-row"><span class="spec-label">Voltage</span><span class="spec-value">1.8–3.6 V</span></div>
+        </div>
+      </div>
+
+      <!-- Rain Sensor -->
+      <div class="card p-6 hover:border-cyan-500/40">
+        <div class="icon-wrap bg-cyan-500/15 mb-4">
+          <i data-lucide="cloud-rain" class="w-5 h-5 text-cyan-400"></i>
+        </div>
+        <h3 class="font-semibold text-white mb-1">Rain Sensor</h3>
+        <p class="text-xs text-slate-500 mb-4">Precipitation Detection</p>
+        <div>
+          <div class="spec-row"><span class="spec-label">Output</span><span class="spec-value">Digital / Analog</span></div>
+          <div class="spec-row"><span class="spec-label">Response</span><span class="spec-value">&lt;1 s</span></div>
+          <div class="spec-row"><span class="spec-label">Sensitivity</span><span class="spec-value">Adjustable</span></div>
+          <div class="spec-row"><span class="spec-label">Interface</span><span class="spec-value">GPIO / ADC</span></div>
+          <div class="spec-row"><span class="spec-label">Voltage</span><span class="spec-value">3.3–5 V</span></div>
+        </div>
+      </div>
+
+      <!-- MQ-135 -->
+      <div class="card p-6 hover:border-green-500/40">
+        <div class="icon-wrap bg-green-500/15 mb-4">
+          <i data-lucide="wind" class="w-5 h-5 text-green-400"></i>
+        </div>
+        <h3 class="font-semibold text-white mb-1">MQ-135</h3>
+        <p class="text-xs text-slate-500 mb-4">Air Quality / Gas</p>
+        <div>
+          <div class="spec-row"><span class="spec-label">Detects</span><span class="spec-value">CO₂, NH₃, VOC</span></div>
+          <div class="spec-row"><span class="spec-label">Range</span><span class="spec-value">10–1000 ppm</span></div>
+          <div class="spec-row"><span class="spec-label">Output</span><span class="spec-value">0–4095 ADC</span></div>
+          <div class="spec-row"><span class="spec-label">Interface</span><span class="spec-value">Analog ADC</span></div>
+          <div class="spec-row"><span class="spec-label">Voltage</span><span class="spec-value">5 V</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ TECH STACK ═══════════════════════════ -->
+<section id="tech-stack" class="py-24 bg-[#0f172a]">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-16">
+      <span class="badge badge-green mb-4">Technology</span>
+      <h2 class="section-title mb-4">Built With <span class="text-gradient">Modern Tools</span></h2>
+      <p class="section-subtitle text-slate-400">An open-source technology stack chosen for performance, simplicity and developer experience.</p>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+
+      <div class="tech-badge">
+        <i data-lucide="zap" class="w-7 h-7 text-teal-400"></i>
+        <span>FastAPI</span>
+      </div>
+
+      <div class="tech-badge">
+        <i data-lucide="database" class="w-7 h-7 text-blue-400"></i>
+        <span>MySQL</span>
+      </div>
+
+      <div class="tech-badge">
+        <i data-lucide="bar-chart-2" class="w-7 h-7 text-pink-400"></i>
+        <span>Chart.js</span>
+      </div>
+
+      <div class="tech-badge">
+        <i data-lucide="wind" class="w-7 h-7 text-sky-400"></i>
+        <span>Tailwind CSS</span>
+      </div>
+
+      <div class="tech-badge">
+        <i data-lucide="cpu" class="w-7 h-7 text-green-400"></i>
+        <span>ESP32</span>
+      </div>
+
+      <div class="tech-badge">
+        <i data-lucide="shield-check" class="w-7 h-7 text-yellow-400"></i>
+        <span>JWT Auth</span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ FOOTER ═══════════════════════════ -->
+<footer class="bg-[#1e293b]/60 border-t border-slate-700/50 py-14">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-10">
+
+      <!-- Brand -->
+      <div class="lg:col-span-2">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="text-2xl">🌤️</span>
+          <span class="text-xl font-bold"><span class="text-white">Weather</span><span class="text-green-400">IQ</span></span>
+        </div>
+        <p class="text-slate-400 text-sm leading-relaxed max-w-xs">
+          A Smart Weather Monitoring IoT system providing real-time environmental data via ESP32 sensors, FastAPI backend and an interactive analytics dashboard.
+        </p>
+        <div class="flex gap-3 mt-5">
+          <span class="badge badge-green">v1.0</span>
+          <span class="badge badge-blue">Open Source</span>
+        </div>
+      </div>
+
+      <!-- Quick Links -->
+      <div>
+        <h4 class="text-sm font-semibold text-white uppercase tracking-wider mb-4">Quick Links</h4>
+        <ul class="space-y-2 text-sm text-slate-400">
+          <li><a href="#features"      class="hover:text-green-400 transition-colors">Features</a></li>
+          <li><a href="#how-it-works"  class="hover:text-green-400 transition-colors">How It Works</a></li>
+          <li><a href="#sensors"       class="hover:text-green-400 transition-colors">Sensors</a></li>
+          <li><a href="#tech-stack"    class="hover:text-green-400 transition-colors">Tech Stack</a></li>
+        </ul>
+      </div>
+
+      <!-- App -->
+      <div>
+        <h4 class="text-sm font-semibold text-white uppercase tracking-wider mb-4">Application</h4>
+        <ul class="space-y-2 text-sm text-slate-400">
+          <li><a href="dashboard/overview.html" class="hover:text-green-400 transition-colors">Dashboard</a></li>
+          <li><a href="login.html"              class="hover:text-green-400 transition-colors">Login</a></li>
+          <li><a href="register.html"           class="hover:text-green-400 transition-colors">Register</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="border-t border-slate-700/50 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+      <p>© 2026 WeatherIQ — Smart Weather Monitoring System. All rights reserved.</p>
+      <p>Built with ESP32 · FastAPI · Chart.js · Tailwind CSS</p>
+    </div>
+  </div>
+</footer>
+
+<!-- ═══════════════════════════ SCRIPTS ═══════════════════════════ -->
+<script>
+  // ── Hamburger toggle ──────────────────────────────────────────
+  const hamburger   = document.getElementById('hamburger');
+  const mobileMenu  = document.getElementById('mobile-menu');
+  hamburger.addEventListener('click', () => {
+    mobileMenu.classList.toggle('open');
+  });
+  // Close on nav link click
+  mobileMenu.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => mobileMenu.classList.remove('open'));
+  });
+
+  // ── Navbar scroll behaviour ───────────────────────────────────
+  const navbar = document.querySelector('.navbar');
+  window.addEventListener('scroll', () => {
+    navbar.style.background = window.scrollY > 20
+      ? 'rgba(15,23,42,0.97)'
+      : 'rgba(15,23,42,0.85)';
+  });
+
+  // ── Fake live numbers ─────────────────────────────────────────
+  const ranges = {
+    temp : { el: document.getElementById('live-temp'),  min: 24.0, max: 32.0, dec: 1 },
+    hum  : { el: document.getElementById('live-hum'),   min: 55,   max: 75,   dec: 0 },
+    pres : { el: document.getElementById('live-pres'),  min: 1008, max: 1018, dec: 0 },
+    aqi  : { el: document.getElementById('live-aqi'),   min: 100,  max: 220,  dec: 0 },
+  };
+
+  function randomBetween(min, max, dec) {
+    const v = Math.random() * (max - min) + min;
+    return dec ? v.toFixed(dec) : Math.round(v).toString();
+  }
+
+  function tickReadings() {
+    Object.values(ranges).forEach(r => {
+      r.el.style.opacity = '0';
+      setTimeout(() => {
+        r.el.textContent = randomBetween(r.min, r.max, r.dec);
+        r.el.style.opacity = '1';
+      }, 300);
+    });
+  }
+
+  // Demo animation disabled: the public summary below is populated from the API.
+
+  // ── Reading counter ───────────────────────────────────────────
+  async function refreshPublicSummary() {
+    try {
+      const response = await fetch((window.WEATHER_API_BASE || 'http://localhost:8000') + '/api/sensors/public-summary');
+      if (!response.ok) return;
+      const summary = await response.json();
+      document.getElementById('stat-devices').textContent = summary.device_count;
+      document.getElementById('stat-readings').textContent = summary.reading_count.toLocaleString();
+      if (summary.latest) {
+        document.getElementById('live-temp').textContent = Number(summary.latest.temperature).toFixed(1);
+        document.getElementById('live-hum').textContent = Math.round(summary.latest.humidity);
+        document.getElementById('live-pres').textContent = Math.round(summary.latest.pressure);
+        document.getElementById('live-aqi').textContent = summary.latest.air_quality_raw;
+      }
+    } catch (_) { /* keep neutral placeholders while the API is unavailable */ }
+  }
+  refreshPublicSummary();
+  setInterval(refreshPublicSummary, 15000);
+
+  // ── Intersection observer for scroll animations ───────────────
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('animate-slide-up');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.card').forEach(el => observer.observe(el));
+</script>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>

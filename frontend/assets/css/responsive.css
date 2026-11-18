@@ -1,0 +1,12 @@
+@media (max-width: 768px) {
+  .sidebar { position:fixed; left:-260px; z-index:50; transition:left 0.3s; }
+  .sidebar.open { left:0; }
+  .main-content { margin-left:0 !important; }
+  .cards-grid { grid-template-columns: 1fr 1fr !important; }
+  .overlay { display:block !important; }
+}
+@media (max-width: 480px) {
+  .cards-grid { grid-template-columns: 1fr !important; }
+  .navbar-title { font-size:1rem; }
+}
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:40; }

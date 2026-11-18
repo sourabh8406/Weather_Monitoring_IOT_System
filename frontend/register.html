@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="assets/js/config.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register — WeatherIQ</title>
+  <meta name="description" content="Create a WeatherIQ account to access your Smart Weather Monitoring dashboard." />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy:  { DEFAULT: '#0f172a', light: '#1e293b' },
+            green: { DEFAULT: '#10b981', dark: '#059669' },
+            blue:  { DEFAULT: '#3b82f6', dark: '#2563eb' },
+          },
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <!-- Global CSS -->
+  <link rel="stylesheet" href="assets/css/style.css" />
+
+  <style>
+    .auth-bg {
+      background:
+        radial-gradient(ellipse 70% 60% at 80% 20%, rgba(59,130,246,0.09) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 50% at 20% 80%, rgba(16,185,129,0.09) 0%, transparent 55%),
+        #0f172a;
+    }
+    .input-group  { position: relative; }
+    .input-icon   { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #64748b; }
+    .input-padded { padding-left: 42px !important; }
+    .input-action { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #64748b; }
+    .input-action:hover { color: #94a3b8; }
+
+    /* Strength bar segments */
+    .seg { flex: 1; height: 4px; border-radius: 2px; background: #334155; transition: background 0.3s ease; }
+    .seg.weak   { background: #ef4444; }
+    .seg.fair   { background: #f59e0b; }
+    .seg.good   { background: #3b82f6; }
+    .seg.strong { background: #10b981; }
+
+    .shake { animation: shake 0.4s ease; }
+    @keyframes shake {
+      0%,100%{transform:translateX(0)}
+      20%,60%{transform:translateX(-6px)}
+      40%,80%{transform:translateX(6px)}
+    }
+
+    /* Requirement check items */
+    .req { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #64748b; transition: color 0.25s; }
+    .req.met { color: #10b981; }
+    .req .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+  </style>
+</head>
+
+<body class="auth-bg min-h-screen flex flex-col">
+
+<!-- Top bar -->
+<header class="flex items-center justify-between px-6 py-4">
+  <a href="index.html" class="flex items-center gap-2">
+    <span class="text-2xl">🌤️</span>
+    <span class="text-xl font-bold tracking-tight">
+      <span class="text-white">Weather</span><span class="text-green-400">IQ</span>
+    </span>
+  </a>
+  <a href="index.html" class="text-slate-400 hover:text-white text-sm flex items-center gap-1 transition-colors">
+    <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Home
+  </a>
+</header>
+
+<!-- Main -->
+<main class="flex-1 flex items-center justify-center px-4 py-10">
+  <div class="w-full max-w-md animate-scale-in">
+
+    <!-- Card -->
+    <div class="card p-8 sm:p-10">
+
+      <!-- Branding -->
+      <div class="text-center mb-8">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-green-500 flex items-center justify-center mx-auto mb-4 shadow-lg glow-blue">
+          <span class="text-3xl">🌤️</span>
+        </div>
+        <h1 class="text-2xl font-bold text-white mb-1">Create your account</h1>
+        <p class="text-slate-400 text-sm">Join WeatherIQ and start monitoring in minutes</p>
+      </div>
+
+      <!-- Error banner -->
+      <div id="error-banner" class="hidden mb-5 flex items-center gap-3 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
+        <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+        <span id="error-msg">Something went wrong. Please try again.</span>
+      </div>
+
+      <!-- Success banner -->
+      <div id="success-banner" class="hidden mb-5 flex items-center gap-3 bg-green-500/10 border border-green-500/30 text-green-400 text-sm rounded-lg px-4 py-3">
+        <i data-lucide="check-circle" class="w-4 h-4 flex-shrink-0"></i>
+        <span>Account created! Redirecting to login…</span>
+      </div>
+
+      <!-- Form -->
+      <form id="register-form" novalidate>
+
+        <!-- Full Name -->
+        <div class="mb-5">
+          <label for="fullname" class="form-label">Full Name</label>
+          <div class="input-group">
+            <span class="input-icon"><i data-lucide="user" class="w-4 h-4"></i></span>
+            <input
+              type="text" id="fullname" name="fullname" autocomplete="name"
+              placeholder="Sourabh Manjhi"
+              class="form-input input-padded"
+            />
+          </div>
+          <p class="form-error hidden" id="name-err">Full name is required.</p>
+        </div>
+
+        <!-- Email -->
+        <div class="mb-5">
+          <label for="email" class="form-label">Email address</label>
+          <div class="input-group">
+            <span class="input-icon"><i data-lucide="mail" class="w-4 h-4"></i></span>
+            <input
+              type="email" id="email" name="email" autocomplete="email"
+              placeholder="you@example.com"
+              class="form-input input-padded"
+            />
+          </div>
+          <p class="form-error hidden" id="email-err">Please enter a valid email address.</p>
+        </div>
+
+        <!-- Password -->
+        <div class="mb-2">
+          <label for="password" class="form-label">Password</label>
+          <div class="input-group">
+            <span class="input-icon"><i data-lucide="lock" class="w-4 h-4"></i></span>
+            <input
+              type="password" id="password" name="password" autocomplete="new-password"
+              placeholder="Min. 8 characters"
+              class="form-input input-padded pr-11"
+            />
+            <button type="button" id="toggle-pw" class="input-action" aria-label="Toggle password">
+              <i data-lucide="eye" class="w-4 h-4" id="eye-icon"></i>
+            </button>
+          </div>
+          <p class="form-error hidden" id="pw-err">Password must be at least 8 characters.</p>
+        </div>
+
+        <!-- Strength meter -->
+        <div class="mb-4">
+          <div class="flex gap-1.5 mb-2" id="strength-segs">
+            <div class="seg" id="seg-1"></div>
+            <div class="seg" id="seg-2"></div>
+            <div class="seg" id="seg-3"></div>
+            <div class="seg" id="seg-4"></div>
+          </div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-slate-500">Strength: <span id="strength-label" class="font-medium text-slate-400">—</span></span>
+          </div>
+          <!-- Requirements list -->
+          <div class="grid grid-cols-2 gap-1">
+            <div class="req" id="req-len"><div class="dot"></div> 8+ characters</div>
+            <div class="req" id="req-upper"><div class="dot"></div> Uppercase letter</div>
+            <div class="req" id="req-lower"><div class="dot"></div> Lowercase letter</div>
+            <div class="req" id="req-digit"><div class="dot"></div> Number</div>
+            <div class="req" id="req-special"><div class="dot"></div> Special character</div>
+          </div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="mb-6">
+          <label for="confirm-password" class="form-label">Confirm Password</label>
+          <div class="input-group">
+            <span class="input-icon"><i data-lucide="lock-keyhole" class="w-4 h-4"></i></span>
+            <input
+              type="password" id="confirm-password" name="confirm-password" autocomplete="new-password"
+              placeholder="Repeat your password"
+              class="form-input input-padded pr-11"
+            />
+            <button type="button" id="toggle-cpw" class="input-action" aria-label="Toggle confirm password">
+              <i data-lucide="eye" class="w-4 h-4" id="eye-icon-2"></i>
+            </button>
+          </div>
+          <p class="form-error hidden" id="cpw-err">Passwords do not match.</p>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" id="submit-btn" class="btn btn-blue w-full text-base py-3 mb-5">
+          <span id="btn-label" class="flex items-center justify-center gap-2">
+            <i data-lucide="user-plus" class="w-4 h-4"></i> Create Account
+          </span>
+          <span id="btn-spinner" class="hidden items-center gap-2">
+            <span class="spinner"></span> Creating account…
+          </span>
+        </button>
+
+      </form>
+
+      <hr class="divider" />
+
+      <p class="text-center text-sm text-slate-400">
+        Already have an account?
+        <a href="login.html" class="text-green-400 hover:text-green-300 font-medium transition-colors ml-1">Login →</a>
+      </p>
+    </div>
+
+    <p class="text-center text-xs text-slate-600 mt-6">
+      By registering you agree to our Terms of Service &amp; Privacy Policy.
+    </p>
+  </div>
+</main>
+
+<script>
+  const API_BASE = window.WEATHER_API_BASE || 'http://localhost:8000';
+
+  // ── Helpers ───────────────────────────────────────────────────
+  function isValidEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()); }
+  function showErr(id, msg) { const el = document.getElementById(id); if (msg) el.textContent = msg; el.classList.remove('hidden'); }
+  function hideErr(id) { document.getElementById(id).classList.add('hidden'); }
+  function showBanner(id) { document.getElementById(id).classList.remove('hidden'); }
+  function hideBanner(id) { document.getElementById(id).classList.add('hidden'); }
+
+  function setLoading(on) {
+    const btn = document.getElementById('submit-btn');
+    const label = document.getElementById('btn-label');
+    const spinner = document.getElementById('btn-spinner');
+    btn.disabled = on;
+    label.classList.toggle('hidden', on);
+    spinner.classList.toggle('hidden', !on);
+    spinner.classList.toggle('flex', on);
+  }
+
+  // ── Password toggles ──────────────────────────────────────────
+  function makeToggle(inputId, btnId, iconId) {
+    const inp = document.getElementById(inputId);
+    const ico = document.getElementById(iconId);
+    document.getElementById(btnId).addEventListener('click', () => {
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      ico.setAttribute('data-lucide', show ? 'eye-off' : 'eye');
+      lucide.createIcons();
+    });
+  }
+  makeToggle('password', 'toggle-pw', 'eye-icon');
+  makeToggle('confirm-password', 'toggle-cpw', 'eye-icon-2');
+
+  // ── Password strength ─────────────────────────────────────────
+  const requirements = {
+    'req-len'    : v => v.length >= 8,
+    'req-upper'  : v => /[A-Z]/.test(v),
+    'req-lower'  : v => /[a-z]/.test(v),
+    'req-digit'  : v => /\d/.test(v),
+    'req-special': v => /[^A-Za-z0-9]/.test(v),
+  };
+
+  const strengthLabels = ['—', 'Weak', 'Fair', 'Good', 'Strong'];
+  const strengthClasses = ['', 'weak', 'fair', 'good', 'strong'];
+  const strengthColors  = ['text-slate-400', 'text-red-400', 'text-yellow-400', 'text-blue-400', 'text-green-400'];
+
+  function evaluateStrength(v) {
+    return Object.values(requirements).filter(fn => fn(v)).length;
+  }
+
+  document.getElementById('password').addEventListener('input', function () {
+    const v = this.value;
+    const score = evaluateStrength(v);
+
+    // Update requirement indicators
+    Object.entries(requirements).forEach(([id, fn]) => {
+      const el = document.getElementById(id);
+      el.classList.toggle('met', fn(v));
+    });
+
+    // Update segments
+    for (let i = 1; i <= 4; i++) {
+      const seg = document.getElementById(`seg-${i}`);
+      seg.className = 'seg' + (i <= score && score > 0 ? ' ' + strengthClasses[score] : '');
+    }
+
+    // Update label
+    const lbl = document.getElementById('strength-label');
+    lbl.textContent = v.length === 0 ? '—' : strengthLabels[score] || 'Strong';
+    lbl.className = 'font-medium ' + (v.length === 0 ? 'text-slate-400' : strengthColors[score] || 'text-green-400');
+  });
+
+  // ── Clear errors on input ─────────────────────────────────────
+  document.getElementById('fullname').addEventListener('input',          () => hideErr('name-err'));
+  document.getElementById('email').addEventListener('input',             () => hideErr('email-err'));
+  document.getElementById('password').addEventListener('input',          () => hideErr('pw-err'));
+  document.getElementById('confirm-password').addEventListener('input',  () => hideErr('cpw-err'));
+
+  // ── Form submit ───────────────────────────────────────────────
+  document.getElementById('register-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideBanner('error-banner');
+    hideBanner('success-banner');
+
+    const name     = document.getElementById('fullname').value.trim();
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirm  = document.getElementById('confirm-password').value;
+    let valid = true;
+
+    if (!name) {
+      showErr('name-err', 'Full name is required.');
+      valid = false;
+    } else { hideErr('name-err'); }
+
+    if (!isValidEmail(email)) {
+      showErr('email-err', 'Please enter a valid email address.');
+      valid = false;
+    } else { hideErr('email-err'); }
+
+    if (password.length < 8) {
+      showErr('pw-err', 'Password must be at least 8 characters.');
+      valid = false;
+    } else { hideErr('pw-err'); }
+
+    if (password !== confirm) {
+      showErr('cpw-err', 'Passwords do not match.');
+      valid = false;
+    } else if (confirm) { hideErr('cpw-err'); }
+
+    if (!valid) return;
+
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        showBanner('success-banner');
+        setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+      } else {
+        const msg = data.detail || 'Registration failed. Please try again.';
+        document.getElementById('error-msg').textContent = msg;
+        showBanner('error-banner');
+        document.getElementById('register-form').classList.add('shake');
+        setTimeout(() => document.getElementById('register-form').classList.remove('shake'), 500);
+        setLoading(false);
+      }
+    } catch (err) {
+      document.getElementById('error-msg').textContent = 'Unable to connect to the server. Please check your connection.';
+      showBanner('error-banner');
+      setLoading(false);
+    }
+  });
+</script>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>
